@@ -1,0 +1,1600 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>💈 Admin | El Negrone's</title>
+   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Cinzel:wght@700;900&display=swap" rel="stylesheet">
+    <style>
+        :root { 
+            --primary: #c5a059; --bg: #0a0a0a; --card: #141414; --input-bg: #1d1d1d;  
+            --text: #ffffff; --text-dim: #999; --danger: #ff4d4d; --success: #00ff88;
+            --grad: linear-gradient(135deg, #c5a059 0%, #a68549 100%); 
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding-bottom: 100px; }
+        .tab-btn.disabled {
+    opacity: 0.3;
+    filter: grayscale(1);
+    cursor: not-allowed;
+}
+        .top-nav-container { 
+            position: sticky; 
+            top: 0; 
+            padding: 10px 5px; 
+            background: rgba(10, 10, 10, 0.95); 
+            backdrop-filter: blur(15px); 
+            border-bottom: 1px solid rgba(197, 160, 89, 0.2);
+            z-index: 1000; 
+        }
+        .tab-bar { 
+            background: #161616; 
+            padding: 8px; 
+            border-radius: 18px; 
+            display: flex; 
+            max-width: 650px; 
+            margin: 0 auto; 
+            border: 1px solid #333; 
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .tab-bar::-webkit-scrollbar { display: none; }
+        .tab-btn { 
+            padding: 12px 10px; 
+            border-radius: 14px; 
+            color: #777; 
+            font-size: 0.75rem; /* Fonte maior */
+            font-weight: 800; 
+            cursor: pointer; 
+            flex: 1; 
+            min-width: 90px; /* Botões mais largos */
+            text-align: center; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            gap: 5px; 
+            transition: 0.3s;
+        }
+        .tab-btn span:first-child { 
+            font-size: 1.6rem; /* Ícones bem visíveis */
+        }
+        
+        /* Estilo para horários já agendados (não clicáveis) */
+#grid-selecao-folgas .hora-chip.agendado {
+    background: #2d1f1f !important;
+    border-color: #ff4444 !important;
+    color: #ff6666 !important;
+    cursor: not-allowed !important;
+    position: relative;
+}
+
+#grid-selecao-folgas .hora-chip.agendado::after {
+    content: '✕';
+    position: absolute;
+    top: 2px;
+    right: 4px;
+    font-size: 0.5rem;
+    opacity: 0.7;
+}
+
+/* Estilo para horários já bloqueados como folga */
+#grid-selecao-folgas .hora-chip.bloqueado {
+    background: #1f2d1f !important;
+    border-color: #00ff88 !important;
+    color: #66ffaa !important;
+    cursor: not-allowed !important;
+}
+
+/* Tooltip personalizado */
+#grid-selecao-folgas .hora-chip[title]:hover::before {
+    content: attr(title);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #000;
+    color: #fff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.6rem;
+    white-space: nowrap;
+    z-index: 100;
+    pointer-events: none;
+}
+
+        .tab-btn.active { 
+            color: var(--primary); 
+            background: rgba(197, 160, 89, 0.1);
+        }
+        .content { padding: 20px 15px; max-width: 480px; margin: auto; }
+        .card { background: var(--card); border-radius: 30px; padding: 22px; margin-bottom: 18px; border: 1px solid #222; position: relative; overflow: hidden; }
+        
+        h3 { font-family: 'Cinzel', serif; color: var(--primary); font-size: 0.9rem; margin-bottom: 15px; text-transform: uppercase; }
+        label { font-size: 0.6rem; color: var(--primary); font-weight: 800; text-transform: uppercase; margin: 0 0 8px 10px; display: block; }
+        input, select, textarea { width: 100%; padding: 16px; margin-bottom: 15px; border-radius: 15px; border: 1px solid #282828; background: var(--input-bg); color: #fff; font-size: 0.85rem; }
+        
+        .btn-action { width: 100%; padding: 18px; border-radius: 18px; background: var(--grad); color: #000; font-weight: 900; border: none; cursor: pointer; text-transform: uppercase; font-size: 0.8rem; margin-top: 10px; }
+        .btn-outline { width: 100%; padding: 15px; background: transparent; border: 1px solid #333; color: var(--text-dim); border-radius: 15px; font-weight: 700; font-size: 0.7rem; cursor: pointer; margin-top: 5px; }
+
+        .agenda-card { background: #1a1a1a; border-radius: 25px; padding: 20px; margin-bottom: 20px; border: 1px solid #282828; }
+        .badge-hora { background: var(--grad); color: #000; padding: 6px 15px; border-radius: 12px; font-weight: 900; font-size: 1rem; }
+        
+        .dias-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 15px; }
+        .dia-chip { 
+            background: #161616; padding: 18px 10px; border-radius: 18px; font-size: 0.75rem; 
+            text-align: center; border: 1px solid #252525; cursor: pointer; font-weight: 800; 
+            text-transform: uppercase; transition: 0.3s; color: var(--text-dim);
+        }
+        .dia-chip.active { background: var(--grad); color: #000; border: none; transform: scale(1.02); }
+
+        /* NOVOS ESTILOS PARA O FILTRO DE DATAS NA AGENDA */
+        .datas-filtro-wrapper { display: flex; gap: 10px; overflow-x: auto; padding: 5px 0 20px 0; scrollbar-width: none; }
+        .datas-filtro-wrapper::-webkit-scrollbar { display: none; }
+        .card-data-filtro { 
+            min-width: 65px; background: #161616; padding: 12px 5px; border-radius: 15px; 
+            text-align: center; border: 1px solid #222; cursor: pointer; transition: 0.3s;
+        }
+        .card-data-filtro.active { background: var(--grad); border-color: var(--primary); color: #000; }
+        .card-data-filtro span { display: block; font-size: 0.6rem; font-weight: 800; text-transform: uppercase; margin-bottom: 2px; }
+        .card-data-filtro b { font-size: 1rem; display: block; }
+
+        .grid-10min { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+        .hora-chip { 
+            background: #1a1a1a; 
+            padding: 15px 2px; 
+            border-radius: 12px; 
+            font-size: 0.7rem; 
+            text-align: center; 
+            border: 1px solid #252525; 
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            
+            /* Importante para não bugar o arraste */
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none; /* Controlado manualmente pelo JS acima */
+        }
+
+        .hora-chip { 
+            background: #1a1a1a; 
+            padding: 16px 2px; /* Chip mais alto para facilitar toque */
+            border-radius: 12px; 
+            font-size: 0.75rem; 
+            text-align: center; 
+            border: 1px solid #252525; 
+            user-select: none;
+            touch-action: pan-y; /* Permite rolagem vertical nativa */
+        }
+        .hora-chip.active { 
+            background: var(--grad) !important; 
+            color: #000 !important; 
+            border: none !important;
+            font-weight: 900;
+        }
+
+        .item-list { display: flex; justify-content: space-between; align-items: center; padding: 18px 22px; background: #161616; border-radius: 20px; margin-bottom: 12px; border: 1px solid #222; }
+        .btn-del { color: var(--danger); background: none; border: none; font-weight: 800; font-size: 0.65rem; cursor: pointer; }
+        .btn-edit { color: var(--success); background: none; border: none; font-weight: 800; font-size: 0.65rem; cursor: pointer; margin-right: 15px; }
+
+        .hint-box { background: rgba(197, 160, 89, 0.1); border: 1px dashed var(--primary); padding: 15px; border-radius: 15px; margin-bottom: 15px; }
+        .premium-badge { position: absolute; top: 15px; right: -30px; background: var(--grad); color: #000; padding: 5px 35px; font-size: 0.5rem; font-weight: 900; transform: rotate(45deg); text-transform: uppercase; }
+        /* 1. Ajuste da Grade de Horários (Sem a barra cinza) */
+        /* Ajuste da Grade de Horários */
+        #render-horarios-grade {
+            display: grid; 
+            grid-template-columns: repeat(4, 1fr); 
+            gap: 8px; 
+            position: relative;
+            padding-right: 0;
+        }
+        
+        /* Grid de Barbeiros Menor */
+        .barbeiro-selector-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr); /* 3 por linha para ocupar menos espaço vertical */
+            gap: 8px;
+            margin: 10px 0;
+        }
+        
+        /* Card de Barbeiro Mini */
+        /* Card de Barbeiro Mini */
+        .barbeiro-card-link {
+            background: #161616;
+            border: 1px solid #282828;
+            padding: 8px 4px; 
+            border-radius: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            pointer-events: auto !important;
+        }
+        
+        /* Nome do profissional em AMARELO */
+        .barbeiro-card-link b { 
+            font-size: 0.55rem; 
+            text-transform: uppercase; 
+            color: var(--primary); /* Usa o dourado/amarelo do seu tema */
+            font-weight: 700;
+        }
+        
+        /* Ícone (Emoji) */
+        .barbeiro-card-link span { 
+            font-size: 1rem; 
+        }
+        
+        /* Quando estiver SELECIONADO */
+        .barbeiro-card-link.active {
+            background: var(--grad);
+            border-color: var(--primary);
+        }
+        
+        /* Nome fica PRETO no fundo amarelo quando selecionado para dar contraste */
+        .barbeiro-card-link.active b { 
+            color: #000; 
+            font-weight: 900; 
+        }
+        
+        .select-hidden { display: none !important; }
+        
+        /* Container com rolagem para os horários */
+        .scroll-grade {
+            max-height: 250px; /* Altura de aproximadamente 4 linhas de chips */
+            overflow-y: auto;
+            padding: 10px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 15px;
+            border: 1px solid #222;
+            margin-bottom: 15px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary) #1a1a1a;
+        }
+        
+        /* Estilo da "seta" ou indicador de rolagem */
+        .scroll-hint {
+            text-align: center;
+            color: var(--primary);
+            font-size: 0.7rem;
+            margin-bottom: 5px;
+            animation: bounce 2s infinite;
+        }
+        
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {transform: translateY(0);}
+            40% {transform: translateY(-5px);}
+            60% {transform: translateY(-3px);}
+        }
+            </style>
+</head>
+<body>
+
+
+<div id="main-app">
+    <div class="top-nav-container">
+        <div class="tab-bar">
+            <div class="tab-btn active" onclick="switchTab('agenda', this)"><span>📅</span><span>AGENDA</span></div>
+            <div class="tab-btn" onclick="switchTab('atendimento', this)"><span>✅</span><span>DATAS</span></div>
+            <div class="tab-btn" onclick="switchTab('grade', this)"><span>📏</span><span>GRADE</span></div>
+            <div class="tab-btn" onclick="switchTab('equipe', this)"><span>👥</span><span>EQUIPE</span></div>
+            <div class="tab-btn" onclick="switchTab('folgas', this)"><span>🔒</span><span>FOLGAS</span></div>
+            <div class="tab-btn" onclick="switchTab('config', this)"><span>⚙️</span><span>AJUSTES</span></div>
+        </div>
+    </div>
+
+    <div class="content">
+        <div id="tab-agenda" class="tab-content">
+            <label>Selecionar Barbeiro</label>
+                <div id="cards-barbeiro-agenda" class="barbeiro-selector-grid"></div>
+                <select id="filtro-barbeiro-agenda" class="select-hidden" onchange="carregarAgenda()"></select>
+            
+            <label>Filtrar por Dia</label>
+            <input type="hidden" id="filtro-data-selecionada" value="">
+            <div class="datas-filtro-wrapper" id="agenda-dias-filtro"></div>
+
+            <div id="render-agenda"></div>
+        </div>
+
+        <div id="tab-atendimento" class="tab-content" style="display:none;">
+    <div class="card">
+        <h3>Dias de Atendimento</h3>
+        <label>Selecionar Barbeiro</label>
+            <div id="cards-barbeiro-atendimento" class="barbeiro-selector-grid"></div>
+            <select id="data-barbeiro-select" class="select-hidden" onchange="carregarDatasAtendimento()"></select>
+        
+        <div id="datas-controles" style="display:none;">
+            <label>Clique nos dias disponíveis para o cliente:</label>
+            <div class="dias-grid" id="atendimento-dias">
+                <div class="dia-chip" data-day="1" onclick="toggleElement(this)">Segunda</div>
+                <div class="dia-chip" data-day="2" onclick="toggleElement(this)">Terça</div>
+                <div class="dia-chip" data-day="3" onclick="toggleElement(this)">Quarta</div>
+                <div class="dia-chip" data-day="4" onclick="toggleElement(this)">Quinta</div>
+                <div class="dia-chip" data-day="5" onclick="toggleElement(this)">Sexta</div>
+                <div class="dia-chip" data-day="6" onclick="toggleElement(this)">Sábado</div>
+                <div class="dia-chip" data-day="0" onclick="toggleElement(this)">Domingo</div>
+            </div>
+
+            <label>Janela de Agendamento (Visão do Cliente)</label>
+            <select id="config-horizonte-agenda">
+                <option value="7">Exibir apenas 1 semana</option>
+                <option value="14">Exibir 2 semanas</option>
+                <option value="21">Exibir 3 semanas</option>
+                <option value="30">Exibir o mês inteiro (30 dias)</option>
+            </select>
+            <button class="btn-action" onclick="salvarDiasAtendimento()">Salvar Configuração</button>
+            <button class="btn-outline" onclick="limparChips('atendimento-dias')">Limpar Seleção</button>
+        </div>
+    </div>
+</div>
+
+        <div id="tab-grade" class="tab-content" style="display:none;">
+            <div class="card">
+                <h3>Grade de Horários</h3>
+                <label>Selecione o Barbeiro</label>
+                    <div id="cards-barbeiro-grade" class="barbeiro-selector-grid"></div>
+                    <select id="grade-barbeiro-select" class="select-hidden" onchange="carregarConfigGradeBarbeiro()"></select>
+                
+                <div id="grade-controles" style="display:none;">
+                    <label>1. Escolha o dia para editar:</label>
+                    <div class="dias-grid">
+                        <div class="dia-chip grade-dia-btn" data-day="1" onclick="selecionarDiaGrade(this)">Segunda</div>
+                        <div class="dia-chip grade-dia-btn" data-day="2" onclick="selecionarDiaGrade(this)">Terça</div>
+                        <div class="dia-chip grade-dia-btn" data-day="3" onclick="selecionarDiaGrade(this)">Quarta</div>
+                        <div class="dia-chip grade-dia-btn" data-day="4" onclick="selecionarDiaGrade(this)">Quinta</div>
+                        <div class="dia-chip grade-dia-btn" data-day="5" onclick="selecionarDiaGrade(this)">Sexta</div>
+                        <div class="dia-chip grade-dia-btn" data-day="6" onclick="selecionarDiaGrade(this)">Sábado</div>
+                        <div class="dia-chip grade-dia-btn" data-day="0" onclick="selecionarDiaGrade(this)">Domingo</div>
+                    </div>
+
+                    <div id="config-horarios-dia" style="display:none; margin-top:20px; border-top: 1px solid #222; padding-top:20px;">
+                        
+                    <label id="label-dia-selecionado">Selecione as horas:</label>
+                    
+                    <div style="display: flex; gap: 10px; margin: 15px 0;">
+                        
+                    </div>
+                
+                    <div class="grid-10min" id="render-horarios-grade" style="user-select: none; -webkit-user-drag: none;"></div>
+                    
+                    <button class="btn-action" onclick="salvarHorariosDia()">Salvar Horários</button>
+                </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-equipe" class="tab-content" style="display:none;">
+    <div class="card">
+        <h3 id="titulo-equipe">Novo Profissional</h3>
+        <input type="hidden" id="edit-id">
+        
+        <label>Nome</label>
+        <input id="b-nome" placeholder="Ex: Lucas">
+        
+        <label>Foto do Profissional</label>
+        <input type="file" id="b-foto" accept="image/*" style="margin-bottom: 15px;">
+        <div id="preview-container" style="display:none; margin-bottom: 15px; text-align: center;">
+            <img id="b-foto-preview" src="" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary);">
+        </div>
+        <div class="hint-box">
+            <label style="margin:0; color:var(--primary);">PADRÃO DE SERVIÇO:</label>
+            <p style="font-size: 0.65rem; color: #fff; margin: 5px 0;">Nome - Preço - Minutos</p>
+        </div>
+        
+        <label>Lista de Serviços (Um por linha)</label>
+        <textarea id="b-servs" rows="5" placeholder="Corte - 50 - 30"></textarea>
+        
+        <button class="btn-action" id="btn-salvar-barbeiro" onclick="salvarBarbeiro()">Cadastrar</button>
+        <button id="btn-cancelar-edit" class="btn-outline" style="display:none;" onclick="limparFormBarbeiro()">CANCELAR EDIÇÃO</button>
+    </div>
+    <div id="render-equipe"></div>
+</div>
+
+        <div id="tab-folgas" class="tab-content" style="display:none;">
+    <div class="card">
+        <h3>Bloqueio de Horários</h3>
+        <label>Barbeiro</label>
+            <div id="cards-barbeiro-folgas" class="barbeiro-selector-grid"></div>
+            <select id="f-barbeiro" class="select-hidden" onchange="carregarFolgas()"></select>
+
+        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+            <button class="btn-outline active" id="btn-tipo-recorrente" onclick="toggleTipoFolga('recorrente')" style="flex:1; border-color:var(--primary); color:#fff;">RECORRENTE</button>
+            <button class="btn-outline" id="btn-tipo-data" onclick="toggleTipoFolga('data')" style="flex:1;">DATA ÚNICA</button>
+        </div>
+
+        <div id="wrapper-recorrente">
+            <label>Dia da Semana (Toda semana)</label>
+            <select id="f-dia-semana">
+                <option value="Segunda-feira">Segunda-feira</option>
+                <option value="Terça-feira">Terça-feira</option>
+                <option value="Quarta-feira">Quarta-feira</option>
+                <option value="Quinta-feira">Quinta-feira</option>
+                <option value="Sexta-feira">Sexta-feira</option>
+                <option value="Sábado">Sábado</option>
+                <option value="Domingo">Domingo</option>
+            </select>
+        </div>
+
+        <div id="wrapper-data" style="display:none;">
+            <label>Data Específica</label>
+            <input type="date" id="f-data-especifica">
+        </div>
+        
+        <label>Selecione os horários para bloquear:</label>
+            <div class="scroll-hint">Deslize para ver mais horários ⬇</div>
+            <div class="scroll-grade">
+                <div class="grid-10min" id="grid-selecao-folgas"></div>
+            </div>
+            
+            <button class="btn-action" style="background:var(--danger); color:#fff;" onclick="salvarFolgas()">Bloquear Horários</button>
+                </div>
+            
+                <div id="render-folgas"></div>
+            </div>
+            
+                    <div id="tab-config" class="tab-content" style="display:none;">
+                <div class="card">
+                    <div class="premium-badge">PREMIUM</div>
+                    <h3>Assinatura</h3>
+                    <p id="txt-restam" style="font-weight: 800; color: var(--primary); margin-bottom: 15px;">Calculando...</p>
+                    <input type="text" id="input-codigo-ativacao" placeholder="Código de 30 dias + dias restantes">
+                    <button class="btn-action" onclick="validarCodigoAtivacao()">Ativar</button>
+                </div>
+            
+                <div class="card">
+                <h3>Renovação</h3>
+                <label>Chave E-mail (Toque para copiar)</label>
+                <input type="text" id="pix-copia-cola" readonly 
+                       value="LukCoelhu@hotmail.com" 
+                       onclick="copiarPix()"
+                       style="font-size: 0.9rem; text-align: center; border: 1px solid var(--primary); cursor: pointer; font-weight: 700; color: var(--primary);">
+                
+            </div>
+            
+                <div class="card">
+                    <h3>Suporte Técnico</h3>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <button class="btn-action" onclick="window.open('https://wa.me/5512988600188?text=Preciso+de+suporte+com+o+sistema+El+Negrones')" style="background: #25d366; color: #000;">
+                            💬 WHATSAPP SUPORTE
+                        </button>
+                        <p style="font-size: 0.7rem; text-align: center; color: var(--text-dim);">Retornarei o mais rápido possível!</p>
+                    </div>
+                </div>
+            
+                <div class="card">
+                    <h3>Notificações Telegram</h3>
+                    <label>Token do Bot</label>
+                    <input type="password" id="conf-telegram-token">
+                    <label>Chat ID</label>
+                    <input type="password" id="conf-telegram-chatid">
+                    <button class="btn-outline" onclick="salvarConfigBot()">Salvar Configuração</button>
+                </div>
+            </div>
+
+    </div>
+</div>
+
+<script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBmed7tZQSDyvgicwUs9fxiXNXJAl-9XZY",
+      authDomain: "barbeariatestes.firebaseapp.com",
+      projectId: "barbeariatestes",
+      storageBucket: "barbeariatestes.firebasestorage.app",
+      messagingSenderId: "954663067578",
+      appId: "1:954663067578:web:f5ae7c403a96b8d375c783"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // --- FUNÇÃO DE LIMPEZA APRIMORADA ---
+async function limparAgendamentosConcluidos() {
+    // 1. Obtém o momento exato ATUAL no fuso de Brasília
+    const agora = new Date(new Date().toLocaleString("en-US", {timeZone: "America/Sao_Paulo"}));
+    
+    // 2. Obtém a data de HOJE no formato YYYY-MM-DD
+    const hojeISO = agora.toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
+
+    try {
+        // Busca agendamentos de hoje ou de dias passados que ainda não estão marcados como concluídos
+        const snap = await db.collection("agenda")
+            .where("data", "<=", hojeISO)
+            .get();
+        
+        const batch = db.batch();
+        let houveAlteracao = false;
+
+        snap.forEach((doc) => {
+            const ag = doc.data();
+            if (!ag.hora || !ag.data || ag.concluido) return;
+
+            // 3. Calcula o horário de término
+            const [h, m] = ag.hora.split(':');
+            const dataHoraInicio = new Date(`${ag.data}T${h}:${m}:00`);
+            const duracao = parseInt(ag.duracao) || 30;
+            const dataHoraTermino = new Date(dataHoraInicio.getTime() + duracao * 60000);
+
+            // 4. Se o horário atual passou do término, marca como concluído
+            if (agora > dataHoraTermino) {
+                batch.update(db.collection("agenda").doc(doc.id), { concluido: true });
+                houveAlteracao = true;
+            }
+        });
+
+        if (houveAlteracao) {
+            await batch.commit();
+            console.log("Agendamentos antigos atualizados para 'Serviço feito'.");
+        }
+    } catch (e) {
+        console.error("Erro na atualização automática:", e);
+    }
+}
+// Chama a função imediatamente ao carregar o sistema
+limparAgendamentosConcluidos();
+
+    // --- CONTINUAÇÃO DO SEU CÓDIGO ---
+    let gradeAtual = { dias: {} };
+    const todosHorarios = [];
+    let assinaturaAtiva = true; 
+
+    for(let i=6; i<24; i++) {
+        for(let j=0; j<60; j+=10) {
+            todosHorarios.push(`${i.toString().padStart(2,'0')}:${j.toString().padStart(2,'0')}`);
+        }
+    }
+    todosHorarios.push("00:00");
+
+
+    window.onload = async () => {
+        const hj = new Date().toISOString().split("T")[0];
+        
+        // Bloqueia datas passadas no filtro de agenda (se houver)
+        if(document.getElementById('f-data')) document.getElementById('f-data').setAttribute('min', hj);
+        
+        // Bloqueia datas passadas no novo campo de folgas por data única
+        if(document.getElementById('f-data-especifica')) {
+            document.getElementById('f-data-especifica').setAttribute('min', hj);
+        }
+        
+        // NOVO: Listener para recarregar quando mudar a data específica
+        document.getElementById('f-data-especifica').addEventListener('change', () => {
+            if(tipoBloqueioAtual === 'data') {
+                carregarFolgas();
+            }
+        });
+        
+        // NOVO: Listener para recarregar quando mudar o dia da semana
+        document.getElementById('f-dia-semana').addEventListener('change', () => {
+            if(tipoBloqueioAtual === 'recorrente') {
+                carregarFolgas();
+            }
+        });
+    
+        // Restante do seu código onload...
+        const html = todosHorarios.map(h => `<div class="hora-chip" data-time="${h}" onclick="toggleElement(this)">${h}</div>`).join('');
+        document.getElementById('render-horarios-grade').innerHTML = html;
+        document.getElementById('grid-selecao-folgas').innerHTML = html;
+        
+        gerarFiltroDatasAgenda();
+        await verificarAssinatura();
+        carregarEquipe();
+        carregarAgenda();
+        carregarConfigBot();
+    };
+
+    function toggleElement(el) { el.classList.toggle('active'); }
+
+    let tipoBloqueioAtual = 'recorrente';
+
+    function toggleTipoFolga(tipo) {
+        tipoBloqueioAtual = tipo;
+        const btnRec = document.getElementById('btn-tipo-recorrente');
+        const btnData = document.getElementById('btn-tipo-data');
+        const wrapRec = document.getElementById('wrapper-recorrente');
+        const wrapData = document.getElementById('wrapper-data');
+    
+        if (tipo === 'recorrente') {
+            btnRec.style.borderColor = "var(--primary)"; btnRec.style.color = "#fff";
+            btnData.style.borderColor = "#333"; btnData.style.color = "var(--text-dim)";
+            wrapRec.style.display = 'block'; wrapData.style.display = 'none';
+        } else {
+            btnData.style.borderColor = "var(--primary)"; btnData.style.color = "#fff";
+            btnRec.style.borderColor = "#333"; btnRec.style.color = "var(--text-dim)";
+            wrapRec.style.display = 'none'; wrapData.style.display = 'block';
+        }
+        
+        // NOVO: Recarrega a grade quando troca o tipo
+        carregarFolgas();
+    }
+    
+    // Adicione dentro do seu <script>
+let fotoBase64 = ""; // Variável global
+
+// Adicione este listener
+document.addEventListener('change', function(e) {
+    if(e.target && e.target.id === 'b-foto'){
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                fotoBase64 = event.target.result;
+                const previewImg = document.getElementById('b-foto-preview');
+                const previewCont = document.getElementById('preview-container');
+                if(previewImg) previewImg.src = fotoBase64;
+                if(previewCont) previewCont.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+});
+
+    async function salvarFolgas() { 
+        const bId = document.getElementById('f-barbeiro').value;
+        const diaSemana = document.getElementById('f-dia-semana').value;
+        const dataEsp = document.getElementById('f-data-especifica').value;
+        const hj = new Date().toISOString().split("T")[0]; // Data atual no formato YYYY-MM-DD
+        
+        // Pega todos os chips de horários marcados como 'active'
+        const horas = Array.from(document.querySelectorAll('#grid-selecao-folgas .hora-chip.active'))
+                           .map(el => el.dataset.time);
+        
+        // Validações básicas
+        if(!bId || horas.length === 0) return alert("Selecione o barbeiro e os horários.");
+        
+        // Validação específica para Data Única
+        if(tipoBloqueioAtual === 'data') {
+            if(!dataEsp) return alert("Selecione a data.");
+            if(dataEsp < hj) return alert("Você não pode bloquear uma data que já passou!");
+        }
+        
+        const batch = db.batch(); // Inicia gravação em lote
+        
+        horas.forEach(h => {
+            const ref = db.collection("bloqueios").doc();
+            const dadosBloqueio = {
+                barbeiroId: bId,
+                hora: h,
+                tipo: tipoBloqueioAtual // Identifica se é 'recorrente' ou 'data'
+            };
+    
+            if(tipoBloqueioAtual === 'recorrente') {
+                dadosBloqueio.diaSemana = diaSemana;
+            } else {
+                dadosBloqueio.data = dataEsp;
+            }
+    
+            batch.set(ref, dadosBloqueio);
+        });
+        
+        try {
+            await batch.commit();
+            alert("Bloqueios salvos com sucesso!");
+            limparChips('grid-selecao-folgas'); // Desmarca os chips de hora após salvar
+            carregarFolgas(); // Atualiza a lista visual abaixo
+        } catch (e) {
+            console.error("Erro ao salvar folgas:", e);
+            alert("Erro ao salvar.");
+        }
+    }
+    
+    function copiarPix() {
+    const pixInput = document.getElementById('pix-copia-cola');
+    
+    // Copia o texto para a área de transferência
+    navigator.clipboard.writeText(pixInput.value).then(() => {
+        // Feedback visual simples
+        const valorOriginal = pixInput.value;
+        pixInput.value = "✅ COPIADO!";
+        pixInput.style.color = "var(--success)";
+        
+        setTimeout(() => {
+            pixInput.value = valorOriginal;
+            pixInput.style.color = "var(--primary)";
+        }, 2000);
+    }).catch(err => {
+        console.error('Erro ao copiar: ', err);
+    });
+}
+
+    // ATUALIZE sua função carregarFolgas para mostrar as datas formatadas:
+    async function carregarFolgas() {
+    const bId = document.getElementById('f-barbeiro').value;
+    const render = document.getElementById('render-folgas');
+    const gridFolgas = document.getElementById('grid-selecao-folgas');
+    
+    if(!bId || !render) return;
+
+    // Limpa seleções visuais anteriores na grade
+    limparChips('grid-selecao-folgas');
+
+    let dataBusca = null;
+    let diaSemanaBusca = null;
+    
+    // Identifica o que o usuário quer bloquear agora
+    if(tipoBloqueioAtual === 'data') {
+        dataBusca = document.getElementById('f-data-especifica').value;
+    } else {
+        diaSemanaBusca = document.getElementById('f-dia-semana').value;
+    }
+
+    try {
+        // Busca agendamentos e bloqueios do barbeiro selecionado
+        let agendamentosQuery = db.collection("agenda").where("barbeiroId", "==", bId);
+        
+        const [agSnap, bloqueiosSnap] = await Promise.all([
+            agendamentosQuery.get(),
+            db.collection("bloqueios").where("barbeiroId", "==", bId).get()
+        ]);
+
+        const horariosOcupados = new Set();
+        
+        // 1. Processa Agendamentos para marcar na grade (Evita bloquear horário que já tem cliente)
+        agSnap.forEach(doc => {
+            const ag = doc.data();
+            if(tipoBloqueioAtual === 'recorrente' && ag.data) {
+                // Converte a data do agendamento para descobrir o dia da semana
+                const dataAg = new Date(ag.data + 'T12:00:00');
+                const diasSemana = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
+                const diaAgNome = diasSemana[dataAg.getDay()];
+                
+                if(diaAgNome === diaSemanaBusca) {
+                    adicionarSlotsOcupados(horariosOcupados, ag.hora, ag.duracao);
+                }
+            } else if(tipoBloqueioAtual === 'data' && ag.data === dataBusca) {
+                adicionarSlotsOcupados(horariosOcupados, ag.hora, ag.duracao);
+            }
+        });
+
+        // 2. Processa Bloqueios existentes para mostrar o que já está bloqueado
+        bloqueiosSnap.forEach(doc => {
+            const bl = doc.data();
+            if(tipoBloqueioAtual === 'data' && bl.tipo === 'data' && bl.data === dataBusca) {
+                horariosOcupados.add(bl.hora);
+            } else if(tipoBloqueioAtual === 'recorrente' && bl.tipo === 'recorrente' && bl.diaSemana === diaSemanaBusca) {
+                horariosOcupados.add(bl.hora);
+            }
+        });
+
+        // 3. Atualiza Visual da Grade de Chips
+        const chips = gridFolgas.querySelectorAll('.hora-chip');
+        chips.forEach(chip => {
+            const hora = chip.dataset.time;
+            chip.classList.remove('agendado', 'bloqueado');
+            chip.style.pointerEvents = 'auto';
+            
+            if(horariosOcupados.has(hora)) {
+                let isAgendamento = false;
+                agSnap.forEach(doc => { 
+                    if(isHoraDentroIntervalo(hora, doc.data().hora, doc.data().duracao)) isAgendamento = true; 
+                });
+                
+                if(isAgendamento) {
+                    chip.classList.add('agendado');
+                    chip.style.background = '#2d1f1f'; chip.style.borderColor = '#ff4444'; chip.style.color = '#ff6666'; chip.style.pointerEvents = 'none';
+                } else {
+                    chip.classList.add('bloqueado');
+                    chip.style.background = '#1f2d1f'; chip.style.borderColor = '#00ff88'; chip.style.color = '#66ffaa';
+                }
+            } else {
+                chip.style.background = '#1a1a1a'; chip.style.borderColor = '#252525'; chip.style.color = '#fff';
+            }
+        });
+
+        // 4. Renderiza Lista de Bloqueios Ativos com a distinção de tipo
+        render.innerHTML = "<h3 style='margin: 20px 0 10px 10px; font-size:0.8rem; color:var(--text-dim); font-weight:800; letter-spacing:1px;'>BLOQUEIOS CONFIGURADOS</h3>";
+        
+        if(bloqueiosSnap.empty) {
+            render.innerHTML += "<p style='text-align:center; color:#666; margin-top:20px; font-size:0.75rem;'>Nenhum bloqueio para este barbeiro.</p>";
+            return;
+        }
+
+        const grupos = {};
+        bloqueiosSnap.forEach(doc => {
+            const d = doc.data();
+            const ehRecorrente = d.tipo === 'recorrente';
+            const titulo = ehRecorrente ? d.diaSemana : d.data.split('-').reverse().join('/');
+            const chave = `${d.tipo}_${titulo}`; 
+            
+            if (!grupos[chave]) grupos[chave] = { label: titulo, tipo: d.tipo, ids: [] };
+            grupos[chave].ids.push({ id: doc.id, hora: d.hora });
+        });
+
+        Object.keys(grupos).forEach(chave => {
+            const grupo = grupos[chave];
+            grupo.ids.sort((a, b) => a.hora.localeCompare(b.hora));
+            const todosIds = grupo.ids.map(i => i.id);
+            const corTipo = grupo.tipo === 'recorrente' ? 'var(--primary)' : '#777';
+            const labelTipo = grupo.tipo === 'recorrente' ? 'Toda ' : 'Apenas dia ';
+
+            render.innerHTML += `
+                <div class="card" style="margin-bottom:15px; border-left: 4px solid ${corTipo}; background: #111;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #222; padding-bottom:8px;">
+                        <div>
+                            <span style="font-size:0.55rem; background:${corTipo}; color:#000; padding:2px 5px; border-radius:4px; font-weight:900; margin-right:6px; text-transform:uppercase;">
+                                ${grupo.tipo === 'recorrente' ? 'Recorrente' : 'Dia Único'}
+                            </span>
+                            <strong style="color:#fff; font-size:0.85rem;">${labelTipo}${grupo.label}</strong>
+                        </div>
+                        <button onclick='limparVariosBloqueios(${JSON.stringify(todosIds)})' 
+                                style="background:transparent; color:var(--danger); border:1px solid var(--danger); padding:4px 8px; border-radius:5px; font-size:0.6rem; font-weight:900; cursor:pointer;">
+                            LIMPAR GRUPO
+                        </button>
+                    </div>
+                    <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                        ${grupo.ids.map(item => `
+                            <div style="background:#1a1a1a; padding:5px 10px; border-radius:6px; display:flex; align-items:center; gap:8px; border:1px solid #333;">
+                                <span style="font-size:0.75rem; color:#ddd;">${item.hora}</span>
+                                <span onclick="excluirBloqueioDireto('${item.id}')" style="color:var(--danger); cursor:pointer; font-weight:bold; font-size:1.1rem;">&times;</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>`;
+        });
+
+    } catch (e) { console.error("Erro ao carregar folgas:", e); }
+}
+
+// Função auxiliar para não repetir código de slots
+function adicionarSlotsOcupados(set, horaInicio, duracaoStr) {
+    let horaAtual = horaInicio;
+    const slots = Math.ceil((parseInt(duracaoStr) || 30) / 10);
+    for(let i = 0; i < slots; i++) {
+        set.add(horaAtual);
+        horaAtual = somar10Minutos(horaAtual);
+    }
+}
+
+// FUNÇÃO DE EXCLUSÃO DIRETA (Sem confirmação)
+async function excluirBloqueioDireto(id) {
+    try {
+        await db.collection('bloqueios').doc(id).delete();
+        carregarFolgas(); // Atualiza a lista e a grade na hora
+    } catch (e) {
+        console.error("Erro ao excluir:", e);
+    }
+}
+
+// FUNÇÃO AUXILIAR PARA EXCLUSÃO DIRETA (Adicione esta função também)
+async function excluirBloqueioDireto(id) {
+    try {
+        await db.collection('bloqueios').doc(id).delete();
+        // Recarrega os dados para atualizar a lista e a grade instantaneamente
+        carregarFolgas();
+    } catch (e) {
+        console.error("Erro ao excluir bloqueio:", e);
+    }
+}
+    
+    // Função auxiliar para somar 10 minutos
+    function somar10Minutos(hora) {
+        let [hh, mm] = hora.split(':').map(Number);
+        mm += 10;
+        if(mm >= 60) {
+            hh++;
+            mm = 0;
+        }
+        return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+    }
+    
+    // Verifica se uma hora está dentro de um intervalo de agendamento
+    function isHoraDentroIntervalo(horaCheck, horaInicio, duracaoMinutos) {
+        const [h1, m1] = horaCheck.split(':').map(Number);
+        const [h2, m2] = horaInicio.split(':').map(Number);
+        
+        const minutosCheck = h1 * 60 + m1;
+        const minutosInicio = h2 * 60 + m2;
+        const minutosFim = minutosInicio + (parseInt(duracaoMinutos) || 30);
+        
+        return minutosCheck >= minutosInicio && minutosCheck < minutosFim;
+    }
+
+    async function limparVariosBloqueios(ids) {
+        if(!ids || ids.length === 0) return;
+        
+        if(!confirm(`Deseja remover todos os ${ids.length} horários bloqueados deste dia?`)) return;
+        
+        const batch = db.batch();
+        
+        ids.forEach(id => {
+            const ref = db.collection("bloqueios").doc(id);
+            batch.delete(ref);
+        });
+    
+        try {
+            await batch.commit();
+            // O onSnapshot atualizará a tela automaticamente
+        } catch (e) {
+            console.error("Erro ao deletar:", e);
+            alert("Erro ao excluir bloqueios.");
+        }
+    }
+
+    function switchTab(tab, el) {
+        if (!assinaturaAtiva && tab !== 'config') {
+            alert("⚠️ SISTEMA BLOQUEADO: Verifique sua assinatura na aba AJUSTES.");
+            return;
+        }
+        document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
+        document.getElementById('tab-'+tab).style.display = 'block';
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        el.classList.add('active');
+    }
+
+    function limparChips(id) {
+        document.querySelectorAll(`#${id} .hora-chip, #${id} .dia-chip`).forEach(c => c.classList.remove('active'));
+    }
+
+    async function carregarEquipe() {
+        const snap = await db.collection("barbeiros").get();
+        const lista = document.getElementById('render-equipe');
+        
+        const containers = [
+            { selId: 'filtro-barbeiro-agenda', contId: 'cards-barbeiro-agenda', callback: carregarAgenda },
+            { selId: 'f-barbeiro', contId: 'cards-barbeiro-folgas', callback: carregarFolgas },
+            { selId: 'grade-barbeiro-select', contId: 'cards-barbeiro-grade', callback: carregarConfigGradeBarbeiro },
+            { selId: 'data-barbeiro-select', contId: 'cards-barbeiro-atendimento', callback: carregarDatasAtendimento }
+        ];
+    
+        lista.innerHTML = "";
+        containers.forEach(c => {
+            const sel = document.getElementById(c.selId);
+            const cont = document.getElementById(c.contId);
+            if(sel) sel.innerHTML = '<option value="">TODOS</option>';
+            if(cont) cont.innerHTML = '';
+        });
+    
+        // INSERE O BOTÃO "TODOS" APENAS NA AGENDA
+        const contAgenda = document.getElementById('cards-barbeiro-agenda');
+        if(contAgenda) {
+            const btnTodos = document.createElement('div');
+            btnTodos.className = 'barbeiro-card-link card-todos active'; // Começa ativo
+            btnTodos.id = 'btn-barbeiro-todos';
+            btnTodos.innerHTML = `<span>🌍</span><b>TODOS</b>`;
+            btnTodos.onclick = () => {
+                document.querySelectorAll('#cards-barbeiro-agenda .barbeiro-card-link').forEach(el => el.classList.remove('active'));
+                btnTodos.classList.add('active');
+                document.getElementById('filtro-barbeiro-agenda').value = "";
+                carregarAgenda();
+            };
+            contAgenda.appendChild(btnTodos);
+        }
+    
+        snap.forEach(doc => {
+            const b = doc.data();
+            
+            lista.innerHTML += `
+                <div class="item-list">
+                    <span><b>${b.nome.toUpperCase()}</b></span>
+                    <div>
+                        <button class="btn-edit" onclick="prepararEdicao('${doc.id}', '${b.nome}', \`${b.servicos}\`)">EDITAR</button>
+                        <button class="btn-del" onclick="excluir('barbeiros', '${doc.id}')">X</button>
+                    </div>
+                </div>`;
+    
+            containers.forEach(c => {
+                const sel = document.getElementById(c.selId);
+                const cont = document.getElementById(c.contId);
+                if(sel) sel.innerHTML += `<option value="${doc.id}">${b.nome}</option>`;
+                
+                if(cont) {
+                    const card = document.createElement('div');
+                    card.className = 'barbeiro-card-link';
+                    card.innerHTML = `<span>👤</span><b>${b.nome}</b>`;
+                    card.onclick = () => {
+                        document.querySelectorAll(`#${c.contId} .barbeiro-card-link`).forEach(el => el.classList.remove('active'));
+                        card.classList.add('active');
+                        sel.value = doc.id;
+                        
+                        // Se estiver na agenda e clicou em alguém, remove o active do "TODOS"
+                        if(c.contId === 'cards-barbeiro-agenda') {
+                            document.getElementById('btn-barbeiro-todos').classList.remove('active');
+                        }
+                        
+                        if(c.callback) c.callback();
+                    };
+                    cont.appendChild(card);
+                }
+            });
+        });
+    }
+    // Função auxiliar para gerenciar a seleção visual
+    function selecionarBarbeiroCard(id, selectId, containerId, callback, cardEl) {
+        const select = document.getElementById(selectId);
+        
+        // Se clicar no que já está ativo, deseleciona (volta para TODOS)
+        if(cardEl.classList.contains('active')) {
+            cardEl.classList.remove('active');
+            select.value = "";
+        } else {
+            // Remove active de todos os outros no mesmo container
+            document.querySelectorAll(`#${containerId} .barbeiro-card-link`).forEach(c => c.classList.remove('active'));
+            cardEl.classList.add('active');
+            select.value = id;
+        }
+        
+        // Dispara a função original do menu (carregarAgenda, carregarFolgas, etc)
+        if(callback) callback();
+    }
+
+    function prepararEdicao(id, nome, servs) {
+        document.getElementById('edit-id').value = id;
+        document.getElementById('b-nome').value = nome;
+        document.getElementById('b-servs').value = servs;
+        document.getElementById('titulo-equipe').innerText = "Editando Profissional";
+        document.getElementById('btn-salvar-barbeiro').innerText = "Salvar Alterações";
+        document.getElementById('btn-cancelar-edit').style.display = "block";
+        window.scrollTo(0,0);
+    }
+
+    function limparFormBarbeiro() {
+    // Limpa o ID de edição para o sistema saber que é um novo cadastro
+    document.getElementById('edit-id').value = "";
+    
+    // Limpa os campos de texto
+    document.getElementById('b-nome').value = "";
+    document.getElementById('b-servs').value = "";
+    
+    // --- PARTE DA FOTO ---
+    // Limpa o input de arquivo (se existir)
+    const inputFoto = document.getElementById('b-foto');
+    if(inputFoto) inputFoto.value = "";
+    
+    // Reseta a variável global da foto (certifique-se de ter 'let fotoBase64 = "";' no topo do script)
+    if (typeof fotoBase64 !== 'undefined') {
+        fotoBase64 = "";
+    }
+    
+    // Esconde o container de preview e limpa a imagem
+    const previewContainer = document.getElementById('preview-container');
+    const previewImg = document.getElementById('b-foto-preview');
+    if(previewContainer) previewContainer.style.display = 'none';
+    if(previewImg) previewImg.src = "";
+    // ---------------------
+
+    // Reseta os textos dos botões e títulos
+    document.getElementById('titulo-equipe').innerText = "Novo Profissional";
+    document.getElementById('btn-salvar-barbeiro').innerText = "Cadastrar";
+    document.getElementById('btn-cancelar-edit').style.display = "none";
+}
+
+    async function salvarBarbeiro() {
+    const id = document.getElementById('edit-id').value;
+    const nome = document.getElementById('b-nome').value;
+    const servicos = document.getElementById('b-servs').value;
+    
+    if(!nome) return alert("Dados incompletos");
+
+    const dados = {
+        nome: nome,
+        servicos: servicos,
+        foto: fotoBase64 // Nova variável com a string da imagem
+    };
+
+    if(id) {
+        await db.collection("barbeiros").doc(id).update(dados);
+    } else {
+        await db.collection("barbeiros").add(dados);
+    }
+
+    limparFormBarbeiro();
+    carregarEquipe();
+}
+
+    async function verificarAssinatura() {
+        try {
+            const doc = await db.collection("configuracao").doc("assinatura").get();
+            const txtRestam = document.getElementById('txt-restam');
+            
+            if(doc.exists) {
+                const venc = doc.data().premiumAte.toDate();
+                const agora = new Date();
+                const resta = Math.ceil((venc - agora) / (1000 * 60 * 60 * 24));
+                
+                if (resta > 0) {
+                    assinaturaAtiva = true;
+                    txtRestam.innerText = `Vence em ${resta} dias`;
+                    txtRestam.style.color = "var(--success)";
+                } else {
+                    assinaturaAtiva = false;
+                    txtRestam.innerText = "Assinatura Expirada";
+                    txtRestam.style.color = "var(--danger)";
+                    bloquearSistema();
+                }
+            } else {
+                assinaturaAtiva = false;
+                txtRestam.innerText = "Sem assinatura ativa";
+                bloquearSistema();
+            }
+        } catch (e) {
+            console.error("Erro ao verificar assinatura:", e);
+        }
+    }
+
+    function bloquearSistema() {
+        document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
+        document.getElementById('tab-config').style.display = 'block';
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.innerText.includes("AJUSTES") || btn.innerText.includes("⚙️")) {
+                btn.classList.add('active');
+                btn.style.opacity = "1";
+            } else {
+                btn.style.opacity = "0.1";
+                btn.style.pointerEvents = "none";
+            }
+        });
+    }
+
+    async function validarCodigoAtivacao() {
+    const cod = document.getElementById('input-codigo-ativacao').value.trim();
+    if (!cod) return alert("Digite um código.");
+    
+    try {
+        const docRef = db.collection("codigos_ativacao").doc(cod);
+        const docSnap = await docRef.get();
+        
+        if (docSnap.exists) {
+            const dados = docSnap.data();
+            
+            if (dados.usado === false) {
+                // 1. Busca a assinatura atual para ver se ainda tem dias
+                const assinaRef = db.collection("configuracao").doc("assinatura");
+                const assinaSnap = await assinaRef.get();
+                
+                let dataBase = new Date(); // Começa com "Hoje"
+                const agora = new Date();
+
+                if (assinaSnap.exists && assinaSnap.data().premiumAte) {
+                    const dataVencimentoAtual = assinaSnap.data().premiumAte.toDate();
+
+                    // LÓGICA ACUMULATIVA:
+                    // Se o que ele tem ainda não venceu (ex: faltam 2 dias), 
+                    // a gente soma os 30 dias em cima desses 2 dias.
+                    if (dataVencimentoAtual > agora) {
+                        dataBase = dataVencimentoAtual;
+                    }
+                }
+
+                // 2. Soma os 30 dias à data base (seja hoje ou o vencimento futuro)
+                const novos30Dias = 30 * 24 * 60 * 60 * 1000;
+                const novaDataFinal = new Date(dataBase.getTime() + novos30Dias);
+
+                // 3. Atualiza o banco de dados
+                await assinaRef.set({ 
+                    premiumAte: novaDataFinal 
+                }, { merge: true });
+
+                await docRef.update({ usado: true, dataUso: agora });
+
+                alert("Assinatura Renovada! Dias somados com sucesso."); 
+                location.reload(); 
+
+            } else { 
+                alert("Este código já foi utilizado."); 
+            }
+        } else { 
+            alert("Código não encontrado."); 
+        }
+    } catch (e) { 
+        alert("Erro na ativação: " + e.message); 
+    }
+}
+
+    async function salvarConfigBot() {
+        const token = document.getElementById('conf-telegram-token').value;
+        const chatid = document.getElementById('conf-telegram-chatid').value;
+        await db.collection("configuracao").doc("bot").set({ token, chatid });
+        alert("Configurado!");
+    }
+
+    async function carregarConfigBot() {
+        const doc = await db.collection("configuracao").doc("bot").get();
+        if(doc.exists) {
+            document.getElementById('conf-telegram-token').value = doc.data().token || "";
+            document.getElementById('conf-telegram-chatid').value = doc.data().chatid || "";
+        }
+    }
+
+    // NOVA FUNÇÃO: GERA OS BOTÕES DE FILTRO DE DATA
+    async function gerarFiltroDatasAgenda() {
+    const container = document.getElementById('agenda-dias-filtro');
+    const diasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    container.innerHTML = "";
+
+    let listaDias = [];
+
+    // 1. Criar a lista base dos próximos 7 dias
+    for (let i = 0; i < 7; i++) {
+        let d = new Date();
+        d.setDate(d.getDate() + i);
+        let iso = d.toLocaleDateString('sv-SE'); // Formato YYYY-MM-DD
+        listaDias.push({
+            iso: iso,
+            diaNum: String(d.getDate()).padStart(2, '0'),
+            nomeDia: diasSemana[d.getDay()],
+            temAgendamento: false
+        });
+    }
+
+    // 2. Verificar no Firebase quais desses dias têm agendamentos
+    const snap = await db.collection("agenda").get();
+    snap.forEach(doc => {
+        const ag = doc.data();
+        const diaEncontrado = listaDias.find(d => d.iso === ag.data);
+        if (diaEncontrado) diaEncontrado.temAgendamento = true;
+    });
+
+    // 3. ORDENAR: Dias com agendamento (true) vêm antes de dias sem (false)
+    listaDias.sort((a, b) => b.temAgendamento - a.temAgendamento);
+
+    // 4. Renderizar na nova ordem
+    listaDias.forEach(dia => {
+        const activeClass = dia.temAgendamento ? 'style="border-color: #FFD700; box-shadow: 0 0 10px rgba(255, 215, 0, 0.2);"' : '';
+        
+        container.innerHTML += `
+            <div class="card-data-filtro" id="btn-filtro-${dia.iso}" onclick="setarFiltroData('${dia.iso}')" ${activeClass}>
+                <span>${dia.nomeDia}</span>
+                <b>${dia.diaNum}</b>
+            </div>`;
+    });
+}
+
+    function setarFiltroData(data) {
+        const input = document.getElementById('filtro-data-selecionada');
+        const todos = document.querySelectorAll('.card-data-filtro');
+        
+        if (input.value === data) {
+            input.value = "";
+            todos.forEach(t => t.classList.remove('active'));
+        } else {
+            input.value = data;
+            todos.forEach(t => t.classList.remove('active'));
+            document.getElementById(`btn-filtro-${data}`).classList.add('active');
+        }
+        carregarAgenda();
+    }
+
+    async function carregarAgenda() {
+    const bId = document.getElementById('filtro-barbeiro-agenda').value;
+    const dataFiltro = document.getElementById('filtro-data-selecionada').value;
+    const render = document.getElementById('render-agenda');
+
+    const barbSnap = await db.collection("barbeiros").get();
+    const barbeirosNomes = {};
+    barbSnap.forEach(doc => { barbeirosNomes[doc.id] = doc.data().nome; });
+
+    let q = db.collection("agenda");
+    if (bId) q = q.where("barbeiroId", "==", bId);
+    if (dataFiltro) q = q.where("data", "==", dataFiltro);
+
+    q = q.orderBy("data", "asc").orderBy("hora", "asc");
+
+    q.onSnapshot(snap => {
+        render.innerHTML = "";
+        if (snap.empty) {
+            render.innerHTML = `<div style="text-align: center; padding: 40px 20px; color: var(--text-dim);"><span style="font-size: 3rem; display: block; margin-bottom: 10px;">📅</span><b style="color: var(--primary); font-size: 0.9rem; text-transform: uppercase;">Sem agendamentos</b></div>`;
+            return;
+        }
+
+        const agora = new Date();
+        const hojeISO = agora.toLocaleDateString('en-CA');
+        let ultimaDataRenderizada = "";
+
+        snap.forEach(doc => {
+            const ag = doc.data();
+            const fone = ag.whatsapp ? ag.whatsapp.replace(/\D/g, '') : "";
+            const nomeExibicao = ag.barbeiroNome || barbeirosNomes[ag.barbeiroId] || "Não definido";
+            const dataBR = ag.data.split('-').reverse().join('/');
+
+            // --- LÓGICA DE STATUS CONCLUÍDO ---
+            const estaConcluido = ag.concluido === true;
+            const estiloCardConcluido = estaConcluido ? "opacity: 0.6; filter: grayscale(0.5); border-color: #333;" : "border-color: #1a1a1a;";
+            const badgeStatus = estaConcluido ? `<span style="color: var(--success); font-size: 0.65rem; font-weight: 900; display: block; margin-top: 2px;">✅ SERVIÇO FEITO</span>` : "";
+
+            if (ag.data !== ultimaDataRenderizada) {
+                render.innerHTML += `
+                    <div style="margin: 30px 0 15px 0; padding: 5px 0; border-bottom: 1px solid #222; display: flex; align-items: center; gap: 10px;">
+                        <span style="background: var(--grad); color: #000; padding: 3px 12px; border-radius: 50px; font-size: 0.7rem; font-weight: 900;">
+                            📅 ${dataBR}
+                        </span>
+                    </div>`;
+                ultimaDataRenderizada = ag.data;
+            }
+
+            // --- LÓGICA DO LEMBRETE E CONFIRMAÇÃO ---
+            const jaConfirmou = localStorage.getItem(`avisado_conf_${doc.id}`);
+            const jaLembrou = localStorage.getItem(`avisado_lembrete_${doc.id}`);
+            const [h, m] = ag.hora.split(':');
+            const dataInicio = new Date(`${ag.data}T${h}:${m}:00`);
+            const diffHoras = (dataInicio - agora) / (1000 * 60 * 60); 
+
+            let estiloLembrete = jaLembrou ? "background:#333; color:#777;" : "background:#FFD700; color:#000;"; 
+            let textoLembrete = jaLembrou ? "AVISADO ✅" : "🔔 LEMBRETE";
+            
+            if (!jaLembrou && ag.data === hojeISO && diffHoras > 0 && diffHoras <= 1) {
+                estiloLembrete = "background:#ff4444; color:#fff; animation: pulse 1s infinite;";
+                textoLembrete = "🚨 AGORA!";
+            }
+
+            const estiloConf = jaConfirmou ? "background:#333; color:#777;" : "background:#25d366; color:#000;";
+            const textoConf = jaConfirmou ? "AVISADO ✅" : "CONFIRMAR";
+
+            const msgLembrete = `Olá ${ag.cliente}! ✂️\n\nConfirmando seu horário na *BARBEARIA EL NEGRONES*:\n📅 *Hoje, ${dataBR}*\n⏰ às *${ag.hora}*\n\nAté logo! 🔥`;
+            const msgConfirmacao = `Olá ${ag.cliente}! ✅\n\nSeu agendamento na *BARBEARIA EL NEGRONES* foi recebido!\n\n📅 Data: *${dataBR}*\n⏰ Horário: *${ag.hora}*\n✂️ Serviço: *${ag.servico || '-'}*\n💈 Profissional: *${nomeExibicao}*\n\nTe aguardamos! 🔥`;
+
+            render.innerHTML += `
+            <div class="agenda-card" id="card-${doc.id}" style="margin-bottom: 12px; border: 1px solid; ${estiloCardConcluido}">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+                    <div>
+                        <b style="font-size:1rem; text-transform:uppercase; color: #fff;">${ag.cliente}</b>
+                        ${badgeStatus}
+                    </div>
+                    <div class="badge-hora" style="background: #1a1a1a; padding: 5px 10px; border-radius: 8px; color: var(--primary); font-weight: 800; border: 1px solid #333;">${ag.hora}</div>
+                </div>
+                
+                <div style="background: rgba(255,255,255,0.02); border-radius: 12px; padding: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; border: 1px solid #1a1a1a;">
+                    <div><label style="font-size: 0.6rem; color: #666; display: block;">✂️ SERVIÇO</label><div style="font-weight:700; font-size:0.75rem; color: var(--primary);">${ag.servico || '-'}</div></div>
+                    <div><label style="font-size: 0.6rem; color: #666; display: block;">👨🏻‍🎨 PROFISSIONAL</label><div style="font-weight:700; font-size:0.75rem; color: #ddd;">${nomeExibicao}</div></div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px;">
+                    ${estaConcluido ? 
+                        `<button onclick="excluir('agenda', '${doc.id}')" style="grid-column: span 3; background:#222; color:#555; border:none; padding:8px; border-radius:8px; font-weight:900; font-size:0.6rem; cursor:pointer;">REMOVER DO HISTÓRICO</button>` :
+                        `
+                        <button class="btn-lembrete" onclick="marcarComoAvisado('${doc.id}', 'lembrete'); window.open('https://wa.me/55${fone}?text=${window.encodeURIComponent(msgLembrete)}')" style="${estiloLembrete} border:none; padding:8px; border-radius:8px; font-weight:900; font-size:0.6rem; cursor:pointer;">${textoLembrete}</button>
+                        <button class="btn-conf" onclick="marcarComoAvisado('${doc.id}', 'conf'); window.open('https://wa.me/55${fone}?text=${window.encodeURIComponent(msgConfirmacao)}')" style="${estiloConf} border:none; padding:8px; border-radius:8px; font-weight:900; font-size:0.6rem; cursor:pointer;">${textoConf}</button>
+                        <button onclick="marcarComoConcluidoManual('${doc.id}')" style="background:var(--grad); color:#000; border:none; padding:8px; border-radius:8px; font-weight:900; font-size:0.6rem; cursor:pointer;">CONCLUIR</button>
+                        `
+                    }
+                </div>
+            </div>`;
+        });
+    });
+}
+
+async function marcarComoConcluidoManual(id) {
+    if(confirm("Deseja marcar este serviço como realizado?")) {
+        try {
+            await db.collection("agenda").doc(id).update({ concluido: true });
+            // O onSnapshot da carregarAgenda() cuidará de atualizar a tela automaticamente
+        } catch (e) {
+            console.error("Erro ao concluir serviço:", e);
+            alert("Erro ao atualizar status.");
+        }
+    }
+}
+
+function marcarComoAvisado(id, tipo) {
+    // Salva individualmente: avisado_conf_id ou avisado_lembrete_id
+    localStorage.setItem(`avisado_${tipo}_${id}`, 'true');
+    const card = document.getElementById(`card-${id}`);
+    if(card) {
+        // Seleciona o botão correto baseado na classe que vamos adicionar abaixo
+        const btn = card.querySelector(`.btn-${tipo}`);
+        if(btn) {
+            btn.style.background = "#333"; 
+            btn.style.color = "#777";
+            btn.style.animation = "none"; // Para o pulsar do lembrete se estiver ativo
+            btn.style.boxShadow = "none";
+            btn.innerText = "AVISADO ✅"; 
+        }
+    }
+}
+    async function carregarDatasAtendimento() {
+        const bId = document.getElementById('data-barbeiro-select').value;
+        if(!bId) return document.getElementById('datas-controles').style.display = 'none';
+        document.getElementById('datas-controles').style.display = 'block';
+        limparChips('atendimento-dias');
+        const doc = await db.collection("config_datas").doc(bId).get();
+        if(doc.exists) {
+            const dados = doc.data();
+            if(dados.dias) {
+                dados.dias.forEach(d => {
+                    const el = document.querySelector(`#atendimento-dias .dia-chip[data-day="${d}"]`);
+                    if(el) el.classList.add('active');
+                });
+            }
+            document.getElementById('config-horizonte-agenda').value = dados.horizonte || "30";
+        }
+    }
+
+    async function salvarDiasAtendimento() {
+        const bId = document.getElementById('data-barbeiro-select').value;
+        const dias = Array.from(document.querySelectorAll('#atendimento-dias .dia-chip.active')).map(el => parseInt(el.dataset.day));
+        const horizonte = document.getElementById('config-horizonte-agenda').value;
+        await db.collection("config_datas").doc(bId).set({ dias: dias, horizonte: parseInt(horizonte) });
+        alert("Configuração salva!"); 
+    }
+ 
+    async function carregarConfigGradeBarbeiro() {
+        const bId = document.getElementById('grade-barbeiro-select').value;
+        if(!bId) return document.getElementById('grade-controles').style.display = 'none';
+        document.getElementById('grade-controles').style.display = 'block';
+        document.getElementById('config-horarios-dia').style.display = 'none'; 
+        const doc = await db.collection("grades").doc(bId).get();
+        gradeAtual = doc.exists ? doc.data() : { dias: {} }; 
+        document.querySelectorAll('.grade-dia-btn').forEach(btn => {
+            btn.classList.remove('active');
+            const nomesDias = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"];
+            const diaNomeTraduzido = nomesDias[parseInt(btn.dataset.day)];
+            const temHorario = gradeAtual.dias && gradeAtual.dias[diaNomeTraduzido] && gradeAtual.dias[diaNomeTraduzido].length > 0;
+            btn.style.border = temHorario ? "2px solid var(--primary)" : "1px solid #252525";
+        });
+    }
+
+    function selecionarDiaGrade(el) {
+        const dia = el.dataset.day;
+        document.querySelectorAll('.grade-dia-btn').forEach(c => c.classList.remove('active'));
+        el.classList.add('active');
+        document.getElementById('config-horarios-dia').style.display = 'block';
+        const nomesDias = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"];
+        const diaNomeTraduzido = nomesDias[parseInt(dia)];
+        const salvos = (gradeAtual.dias && gradeAtual.dias[diaNomeTraduzido]) ? Array.from(gradeAtual.dias[diaNomeTraduzido]) : [];
+        document.querySelectorAll('#render-horarios-grade .hora-chip').forEach(chip => {
+            chip.classList.toggle('active', salvos.includes(chip.dataset.time));
+        });
+        aplicarLogicaPintar();
+    }
+
+    async function salvarHorariosDia() {
+        const bId = document.getElementById('grade-barbeiro-select').value;
+        const diaAtivo = document.querySelector('.grade-dia-btn.active');
+        
+        if(!bId || !diaAtivo) return alert("Selecione barbeiro e dia!");
+
+        // --- PARTE CORRIGIDA: Tradução de número para nome ---
+        const diaNum = diaAtivo.dataset.day;
+        const nomesDias = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"];
+        const diaNome = nomesDias[parseInt(diaNum)];
+        // ---------------------------------------------------
+
+        const selecionados = Array.from(document.querySelectorAll('#render-horarios-grade .hora-chip.active'))
+                                  .map(el => el.getAttribute('data-time'));
+        
+        if (!gradeAtual.dias) gradeAtual.dias = {};
+        
+        // Salva usando o NOME (ex: "terca") em vez do número
+        gradeAtual.dias[diaNome] = selecionados;
+
+        const objetoLimpo = { dias: {} };
+        Object.keys(gradeAtual.dias).forEach(key => {
+            // Mantém apenas nomes de dias e remove chaves numéricas antigas
+            if (isNaN(key) && Array.isArray(gradeAtual.dias[key])) {
+                objetoLimpo.dias[key] = [...gradeAtual.dias[key]];
+            }
+        });
+
+        await db.collection("grades").doc(bId).set(objetoLimpo);
+        alert(`Grade de ${diaNome} salva com sucesso!`);
+        carregarConfigGradeBarbeiro();
+    }
+
+
+    async function excluir(col, id) { 
+    if(confirm("Excluir definitivamente?")) { 
+        try {
+            await db.collection(col).doc(id).delete(); 
+            
+            // Se o que foi excluído for um barbeiro, recarrega a lista da equipe
+            if(col === 'barbeiros') {
+                carregarEquipe();
+            }
+            
+            // NOVO: Se o que foi excluído for um bloqueio de folga, recarrega a grade de folgas na hora
+            if(col === 'bloqueios') {
+                carregarFolgas();
+            }
+            
+        } catch (e) {
+            console.error("Erro ao excluir:", e);
+            alert("Erro ao excluir o item.");
+        }
+    } 
+}
+
+async function cadastrarBarbeiro() {
+    const nome = document.getElementById("admin-nome-barbeiro").value;
+    const arquivo = document.getElementById("admin-file-barbeiro").files[0];
+    const servicos = document.getElementById("admin-servicos").value;
+
+    if (!arquivo) return alert("Selecione uma foto!");
+
+    // 1. Sobe a foto para o Firebase Storage
+    const storageRef = firebase.storage().ref();
+    const fotoRef = storageRef.child(`barbeiros/${Date.now()}_${arquivo.name}`);
+    
+    const snapshot = await fotoRef.put(arquivo);
+    const urlPublica = await snapshot.ref.getDownloadURL();
+
+    // 2. Salva no Firestore com a URL da foto que acabou de subir
+    await db.collection("barbeiros").add({
+        nome: nome,
+        servicos: servicos,
+        foto: urlPublica // Aqui fica o link do Firebase Storage
+    });
+    
+    alert("Cadastrado com sucesso!");
+}
+
+// Função para mostrar a foto assim que selecionar o arquivo
+function previewImagem(event) {
+    const reader = new FileReader();
+    reader.onload = () => {
+        const preview = document.getElementById('img-preview');
+        preview.src = reader.result;
+        preview.style.display = 'block';
+    }
+    reader.readAsDataURL(event.target.files[0]);
+}
+    
+    let isPintando = false;
+    let modoRemover = false;
+    let startX = 0;
+    let isHorizontalGesture = false;
+    
+    function aplicarLogicaPintar() {
+        const chips = document.querySelectorAll('#render-horarios-grade .hora-chip');
+    
+        chips.forEach(chip => {
+            // Clique simples individual
+            chip.onclick = function(e) {
+                if (!isHorizontalGesture) {
+                    this.classList.toggle('active');
+                }
+            };
+    
+            chip.onpointerdown = function(e) {
+                // Se o toque for na extremidade direita (últimos 50px da tela), ignora a pintura
+                const larguraTela = window.innerWidth;
+                if (e.clientX > larguraTela - 50) {
+                    isPintando = false;
+                    return;
+                }
+    
+                isPintando = true;
+                startX = e.clientX;
+                isHorizontalGesture = false;
+                modoRemover = !this.classList.contains('active');
+                chip.releasePointerCapture(e.pointerId);
+            };
+    
+            chip.onpointerenter = function() {
+                if (isPintando && isHorizontalGesture) {
+                    if (modoRemover) this.classList.add('active');
+                    else this.classList.remove('active');
+                }
+            };
+        });
+    }
+    
+    window.onpointermove = function(e) {
+        if (!isPintando) return;
+    
+        const diffX = Math.abs(e.clientX - startX);
+    
+        // Se mover mais de 15px lateralmente, entende como gesto de pintura
+        if (diffX > 15) {
+            isHorizontalGesture = true;
+        }
+    };
+    
+    window.onpointerup = function() {
+        isPintando = false;
+        // Pequeno delay para permitir que o clique individual seja processado
+        setTimeout(() => { isHorizontalGesture = false; }, 50);
+    };
+// Função para os botões de marcar tudo ou limpar
+function marcarTodos(status) {
+    document.querySelectorAll('#render-horarios-grade .hora-chip').forEach(c => {
+        if(status) c.classList.add('active');
+        else c.classList.remove('active');
+    });
+}
+
+
+</script>
+</body>
+</html>
