@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>✂️ Nome da Barbearia | Agendamento</title>
+    <title>✂️ El Negrones | Agendamento</title>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=Cinzel:wght@700;900&display=swap" rel="stylesheet">
@@ -682,82 +682,162 @@
             carregarHorarios(data);
             alert("Adicionado ao carrinho!");
         }
-
+        
+        // ✅ Substitua a função confirmarAgendamento() completa por esta:
         async function confirmarAgendamento() {
-    // --- NOVA VALIDAÇÃO DE CAMPOS ---
-    const nomeInput = document.getElementById("nome-cliente").value.trim();
-    const zapInput = document.getElementById("whatsapp-cliente").value.trim();
-
-    if (nomeInput.length < 3) {
-        return alert("Por favor, insira seu nome completo antes de finalizar.");
-    }
-
-    // Verifica se o WhatsApp está preenchido corretamente (mínimo de 14 caracteres com a máscara)
-    if (zapInput.length < 14) {
-        return alert("Por favor, insira um número de WhatsApp válido com DDD.");
-    }
-    // -------------------------------
-
-    // 1. Se o usuário escolheu um horário na tela mas esqueceu de clicar em "Adicionar",
-    // nós tentamos adicionar para ele automaticamente.
-    if (horarioSelecionado && document.getElementById("select-servico").value) {
-        const bId = document.getElementById("select-barbeiro").value;
-        const data = document.getElementById("data-agenda").value;
-        const jaEstaNoCarrinho = carrinho.some(item => item.data === data && item.hora === horarioSelecionado && item.barbeiroId === bId);
+            const nomeInput = document.getElementById("nome-cliente").value.trim();
+            const zapInput = document.getElementById("whatsapp-cliente").value.trim();
         
-        if (!jaEstaNoCarrinho) {
-            adicionarAoCarrinho();
-        }
-    }
-
-    // 2. Verifica se o carrinho tem itens (agora com garantia de que os dados acima existem)
-    if (carrinho.length === 0) {
-        return alert("Selecione um serviço e horário e clique em 'Adicionar' antes de finalizar!");
-    }
-
-    const btn = document.getElementById("btn-confirmar");
-    if(btn) {
-        btn.disabled = true;
-        btn.textContent = "PROCESSANDO...";
-    }
-
-    try {
-        const batch = db.batch();
+            if (nomeInput.length < 3 || zapInput.length < 14) {
+                return alert("Preencha nome e WhatsApp corretamente.");
+            }
         
-        carrinho.forEach(ag => {
-            const ref = db.collection("agenda").doc();
-            batch.set(ref, {
-                cliente: ag.cliente,
-                whatsapp: ag.whatsapp, // O valor do zap capturado no adicionarAoCarrinho
-                barbeiroId: ag.barbeiroId,
-                data: ag.data,
-                hora: ag.hora,
-                servico: ag.servico,
-                duracao: ag.duracao,
-                criadoEm: new Date()
-            });
-        });
-
-        await batch.commit();
-
-        for (const ag of carrinho) {
-            enviarNotificacaoTelegram(ag.cliente, ag.data, ag.hora, ag.servico, ag.barbeiroNome);
-        }
-
-        carrinho = [];
-        atualizarInterfaceCarrinho();
-        document.getElementById('modal-sucesso').style.display = 'flex';
+            if (horarioSelecionado && document.getElementById("select-servico").value) {
+                adicionarAoCarrinho();
+            }
         
-    } catch (e) {
-        console.error("Erro ao finalizar batch:", e);
-        alert("Erro ao finalizar agendamentos. Tente novamente.");
-    } finally {
-        if(btn) {
-            btn.disabled = false;
-            btn.textContent = "Finalizar Agendamento";
+            if (carrinho.length === 0) {
+                return alert("Selecione um horário e clique em 'Adicionar'!");
+            }
+        
+            const btn = document.getElementById("btn-confirmar");
+            btn.disabled = true;
+            btn.textContent = "VERIFICANDO DISPONIBILIDADE...";
+        
+            try {
+                // 🔴 VERIFICAÇÃO DUPLA: Checa novamente se todos os horários ainda estão livres
+                for (const ag of carrinho) {
+                    const slotsNecessarios = Math.ceil(ag.duracao / 10);
+                    const conflitos = await verificarConflitosFirebase(ag.data, ag.barbeiroId, ag.hora, slotsNecessarios);
+                    
+                    if (conflitos) {
+                        alert(`❌ O horário ${ag.hora} foi reservado por outro cliente enquanto você preenchia o formulário. Por favor, escolha outro horário.`);
+                        carrinho = []; // Limpa carrinho
+                        atualizarInterfaceCarrinho();
+                        carregarHorarios(ag.data); // Recarrega horários
+                        btn.disabled = false;
+                        btn.textContent = "Finalizar Agendamento";
+                        return; // Aborta tudo
+                    }
+                }
+        
+                btn.textContent = "PROCESSANDO...";
+        
+                // Se passou na verificação, prossegue com o agendamento
+                for (const ag of carrinho) {
+                    const payload = {
+                        cliente: nomeInput,
+                        whatsapp: zapInput,
+                        barbeiroId: ag.barbeiroId,
+                        barbeiroNome: ag.barbeiroNome,
+                        data: ag.data,
+                        hora: ag.hora,
+                        servico: ag.servico,
+                        duracao: ag.duracao
+                    };
+        
+                    const response = await fetch('/api/agendar', {
+                        method: 'POST',
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify(payload)
+                    });
+        
+                    const contentType = response.headers.get("content-type");
+                    let result;
+                    
+                    if (contentType && contentType.includes("application/json")) {
+                        result = await response.json();
+                    } else {
+                        const text = await response.text();
+                        throw new Error(`Erro ${response.status}: ${text.substring(0, 200)}`);
+                    }
+        
+                    if (!response.ok) {
+                        // Se o backend detectou conflito
+                        if (response.status === 409) {
+                            throw new Error("Este horário acabou de ser reservado por outro cliente. Por favor, escolha outro.");
+                        }
+                        throw new Error(result.erro || result.error || `Erro HTTP ${response.status}`);
+                    }
+                }
+        
+                carrinho = [];
+                atualizarInterfaceCarrinho();
+                document.getElementById('modal-sucesso').style.display = 'flex';
+                
+            } catch (e) {
+                console.error("Erro completo:", e);
+                alert("Erro ao agendar: " + e.message);
+                // Recarrega horários para mostrar o estado atual
+                const dataAtual = document.getElementById('data-agenda').value;
+                if (dataAtual) carregarHorarios(dataAtual);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "Finalizar Agendamento";
+            }
         }
-    }
-}
+        
+        // 🔴 NOVA FUNÇÃO: Verifica conflitos diretamente no Firebase antes de confirmar
+        async function verificarConflitosFirebase(data, barbeiroId, horaInicial, slotsNecessarios) {
+            try {
+                const [agSnap, blSnapData, blSnapSemana] = await Promise.all([
+                    db.collection("agenda").where("data", "==", data).where("barbeiroId", "==", barbeiroId).get(),
+                    db.collection("bloqueios").where("data", "==", data).where("barbeiroId", "==", barbeiroId).get(),
+                    db.collection("bloqueios").where("diaSemana", "==", getDiaSemanaAdmin(data)).where("barbeiroId", "==", barbeiroId).get()
+                ]);
+        
+                // Monta Set de ocupados (mesma lógica do carregarHorarios)
+                let ocupados = new Set([
+                    ...blSnapData.docs.map(d => d.data().hora),
+                    ...blSnapSemana.docs.map(d => d.data().hora)
+                ]);
+        
+                agSnap.docs.forEach(doc => {
+                    const ag = doc.data();
+                    const duracao = ag.duracao || 30;
+                    const slots = Math.ceil(duracao / 10);
+                    let tempH = ag.hora;
+                    for (let i = 0; i < slots; i++) {
+                        ocupados.add(tempH);
+                        tempH = somar10(tempH);
+                    }
+                });
+        
+                // Verifica se algum slot necessário está ocupado
+                let tempH = horaInicial;
+                for (let i = 0; i < slotsNecessarios; i++) {
+                    if (ocupados.has(tempH)) {
+                        return true; // Conflito encontrado
+                    }
+                    tempH = somar10(tempH);
+                }
+                
+                return false; // Sem conflitos
+            } catch (error) {
+                console.error("Erro na verificação:", error);
+                return true; // Em caso de erro, assume conflito para segurança
+            }
+        }
+        
+        // Helper para converter data em nome do dia (igual ao que você já tem)
+        function getDiaSemanaAdmin(data) {
+            const diasNomes = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"];
+            const mapeamentoCompleto = {
+                "domingo": "Domingo",
+                "segunda": "Segunda-feira",
+                "terca": "Terça-feira",
+                "quarta": "Quarta-feira",
+                "quinta": "Quinta-feira",
+                "sexta": "Sexta-feira",
+                "sabado": "Sábado"
+            };
+            const partes = data.split('-').map(Number);
+            const dataObj = new Date(Date.UTC(partes[0], partes[1] - 1, partes[2], 12, 0, 0));
+            return mapeamentoCompleto[diasNomes[dataObj.getUTCDay()]];
+        }
 
         async function carregarBarbeiros() {
             const bSnap = await db.collection("barbeiros").get();
