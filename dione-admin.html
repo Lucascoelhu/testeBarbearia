@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>💈 Admin | NomeBarbearia </title>
+    <title>💈 Admin | El Negrone's</title>
    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
         <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
         <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
@@ -480,13 +480,13 @@
 
 <script>
     const firebaseConfig = {
-      apiKey: "AIzaSyBmed7tZQSDyvgicwUs9fxiXNXJAl-9XZY",
-      authDomain: "barbeariatestes.firebaseapp.com",
-      projectId: "barbeariatestes",
-      storageBucket: "barbeariatestes.firebasestorage.app",
-      messagingSenderId: "954663067578",
-      appId: "1:954663067578:web:f5ae7c403a96b8d375c783"
-    };
+          apiKey: "AIzaSyBmed7tZQSDyvgicwUs9fxiXNXJAl-9XZY",
+          authDomain: "barbeariatestes.firebaseapp.com",
+          projectId: "barbeariatestes",
+          storageBucket: "barbeariatestes.firebasestorage.app",
+          messagingSenderId: "954663067578",
+          appId: "1:954663067578:web:f5ae7c403a96b8d375c783"
+        };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
@@ -549,52 +549,41 @@ limparAgendamentosConcluidos();
 
 
     window.onload = async () => {
-    const hj = new Date().toISOString().split("T")[0];
-    
-    // Bloqueia datas passadas no filtro de agenda (se houver)
-    if(document.getElementById('f-data')) document.getElementById('f-data').setAttribute('min', hj);
-    
-    // Bloqueia datas passadas no novo campo de folgas por data única
-    if(document.getElementById('f-data-especifica')) {
-        document.getElementById('f-data-especifica').setAttribute('min', hj);
-    }
-    
-    // NOVO: Listener para recarregar quando mudar a data específica
-    document.getElementById('f-data-especifica').addEventListener('change', () => {
-        if(tipoBloqueioAtual === 'data') {
-            carregarFolgas();
+        const hj = new Date().toISOString().split("T")[0];
+        
+        // Bloqueia datas passadas no filtro de agenda (se houver)
+        if(document.getElementById('f-data')) document.getElementById('f-data').setAttribute('min', hj);
+        
+        // Bloqueia datas passadas no novo campo de folgas por data única
+        if(document.getElementById('f-data-especifica')) {
+            document.getElementById('f-data-especifica').setAttribute('min', hj);
         }
-    });
+        
+        // NOVO: Listener para recarregar quando mudar a data específica
+        document.getElementById('f-data-especifica').addEventListener('change', () => {
+            if(tipoBloqueioAtual === 'data') {
+                carregarFolgas();
+            }
+        });
+        
+        // NOVO: Listener para recarregar quando mudar o dia da semana
+        document.getElementById('f-dia-semana').addEventListener('change', () => {
+            if(tipoBloqueioAtual === 'recorrente') {
+                carregarFolgas();
+            }
+        });
     
-    // NOVO: Listener para recarregar quando mudar o dia da semana
-    document.getElementById('f-dia-semana').addEventListener('change', () => {
-        if(tipoBloqueioAtual === 'recorrente') {
-            carregarFolgas();
-        }
-    });
-
-    // Restante do seu código onload...
-    const html = todosHorarios.map(h => `<div class="hora-chip" data-time="${h}" onclick="toggleElement(this)">${h}</div>`).join('');
-    document.getElementById('render-horarios-grade').innerHTML = html;
-    document.getElementById('grid-selecao-folgas').innerHTML = html;
-    
-    gerarFiltroDatasAgenda();
-    await verificarAssinatura();
-    carregarEquipe();
-    
-    // ✅ ATUALIZADO: Tenta carregar agenda com tratamento de erro
-    try {
-        await carregarAgenda();
-    } catch (e) {
-        console.warn("Erro no carregamento inicial da agenda:", e);
-        // Se falhar, tenta o fallback sem ordenação complexa
-        if (typeof carregarAgendaFallback === 'function') {
-            await carregarAgendaFallback();
-        }
-    }
-    
-    carregarConfigBot();
-};
+        // Restante do seu código onload...
+        const html = todosHorarios.map(h => `<div class="hora-chip" data-time="${h}" onclick="toggleElement(this)">${h}</div>`).join('');
+        document.getElementById('render-horarios-grade').innerHTML = html;
+        document.getElementById('grid-selecao-folgas').innerHTML = html;
+        
+        gerarFiltroDatasAgenda();
+        await verificarAssinatura();
+        carregarEquipe();
+        carregarAgenda();
+        carregarConfigBot();
+    };
 
     function toggleElement(el) { el.classList.toggle('active'); }
 
@@ -1273,165 +1262,34 @@ async function excluirBloqueioDireto(id) {
     const dataFiltro = document.getElementById('filtro-data-selecionada').value;
     const render = document.getElementById('render-agenda');
 
-    // Busca nomes dos barbeiros
     const barbSnap = await db.collection("barbeiros").get();
     const barbeirosNomes = {};
     barbSnap.forEach(doc => { barbeirosNomes[doc.id] = doc.data().nome; });
 
-    // Constrói query base
     let q = db.collection("agenda");
-    
-    // Aplica filtros
-    if (bId) {
-        q = q.where("barbeiroId", "==", bId);
-    }
-    if (dataFiltro) {
-        q = q.where("data", "==", dataFiltro);
-    }
-    
-    // Ordenação SEMPRE por data/hora (requer índice composto se houver where)
+    if (bId) q = q.where("barbeiroId", "==", bId);
+    if (dataFiltro) q = q.where("data", "==", dataFiltro);
+
     q = q.orderBy("data", "asc").orderBy("hora", "asc");
 
-    // Limpa listener anterior se existir
-    if (window.unsubscribeAgenda) {
-        window.unsubscribeAgenda();
-    }
-
-    // NOVO: Adiciona tratamento de erro no onSnapshot
-    window.unsubscribeAgenda = q.onSnapshot(
-        snap => {
-            render.innerHTML = "";
-            if (snap.empty) {
-                render.innerHTML = `<div style="text-align: center; padding: 40px 20px; color: var(--text-dim);"><span style="font-size: 3rem; display: block; margin-bottom: 10px;">📅</span><b style="color: var(--primary); font-size: 0.9rem; text-transform: uppercase;">Sem agendamentos</b></div>`;
-                return;
-            }
-
-            const agora = new Date();
-            const hojeISO = agora.toLocaleDateString('en-CA');
-            let ultimaDataRenderizada = "";
-
-            snap.forEach(doc => {
-                const ag = doc.data();
-                const fone = ag.whatsapp ? ag.whatsapp.replace(/\D/g, '') : "";
-                const nomeExibicao = ag.barbeiroNome || barbeirosNomes[ag.barbeiroId] || "Não definido";
-                const dataBR = ag.data.split('-').reverse().join('/');
-
-                const estaConcluido = ag.concluido === true;
-                const estiloCardConcluido = estaConcluido ? "opacity: 0.6; filter: grayscale(0.5); border-color: #333;" : "border-color: #1a1a1a;";
-                const badgeStatus = estaConcluido ? `<span style="color: var(--success); font-size: 0.65rem; font-weight: 900; display: block; margin-top: 2px;">✅ SERVIÇO FEITO</span>` : "";
-
-                if (ag.data !== ultimaDataRenderizada) {
-                    render.innerHTML += `
-                        <div style="margin: 30px 0 15px 0; padding: 5px 0; border-bottom: 1px solid #222; display: flex; align-items: center; gap: 10px;">
-                            <span style="background: var(--grad); color: #000; padding: 3px 12px; border-radius: 50px; font-size: 0.7rem; font-weight: 900;">
-                                📅 ${dataBR}
-                            </span>
-                        </div>`;
-                    ultimaDataRenderizada = ag.data;
-                }
-
-                const jaConfirmou = localStorage.getItem(`avisado_conf_${doc.id}`);
-                const jaLembrou = localStorage.getItem(`avisado_lembrete_${doc.id}`);
-                const [h, m] = ag.hora.split(':');
-                const dataInicio = new Date(`${ag.data}T${h}:${m}:00`);
-                const diffHoras = (dataInicio - agora) / (1000 * 60 * 60); 
-
-                let estiloLembrete = jaLembrou ? "background:#333; color:#777;" : "background:#FFD700; color:#000;"; 
-                let textoLembrete = jaLembrou ? "AVISADO ✅" : "🔔 LEMBRETE";
-                
-                if (!jaLembrou && ag.data === hojeISO && diffHoras > 0 && diffHoras <= 1) {
-                    estiloLembrete = "background:#ff4444; color:#fff; animation: pulse 1s infinite;";
-                    textoLembrete = "🚨 AGORA!";
-                }
-
-                const estiloConf = jaConfirmou ? "background:#333; color:#777;" : "background:#25d366; color:#000;";
-                const textoConf = jaConfirmou ? "AVISADO ✅" : "CONFIRMAR";
-
-                const msgLembrete = `Olá ${ag.cliente}! ✂️\n\nConfirmando seu horário na *BARBEARIA EL NEGRONES*:\n📅 *Hoje, ${dataBR}*\n⏰ às *${ag.hora}*\n\nAté logo! 🔥`;
-                const msgConfirmacao = `Olá ${ag.cliente}! ✅\n\nSeu agendamento na *BARBEARIA EL NEGRONES* foi recebido!\n\n📅 Data: *${dataBR}*\n⏰ Horário: *${ag.hora}*\n✂️ Serviço: *${ag.servico || '-'}*\n💈 Profissional: *${nomeExibicao}*\n\nTe aguardamos! 🔥`;
-
-                render.innerHTML += `
-                <div class="agenda-card" id="card-${doc.id}" style="margin-bottom: 12px; border: 1px solid; ${estiloCardConcluido}">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
-                        <div>
-                            <b style="font-size:1rem; text-transform:uppercase; color: #fff;">${ag.cliente}</b>
-                            ${badgeStatus}
-                        </div>
-                        <div class="badge-hora" style="background: #1a1a1a; padding: 5px 10px; border-radius: 8px; color: var(--primary); font-weight: 800; border: 1px solid #333;">${ag.hora}</div>
-                    </div>
-                    
-                    <div style="background: rgba(255,255,255,0.02); border-radius: 12px; padding: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; border: 1px solid #1a1a1a;">
-                        <div><label style="font-size: 0.6rem; color: #666; display: block;">✂️ SERVIÇO</label><div style="font-weight:700; font-size:0.75rem; color: var(--primary);">${ag.servico || '-'}</div></div>
-                        <div><label style="font-size: 0.6rem; color: #666; display: block;">👨🏻‍🎨 PROFISSIONAL</label><div style="font-weight:700; font-size:0.75rem; color: #ddd;">${nomeExibicao}</div></div>
-                    </div>
-
-                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px;">
-                        ${estaConcluido ? 
-                            `<button onclick="excluir('agenda', '${doc.id}')" style="grid-column: span 3; background:#222; color:#555; border:none; padding:8px; border-radius:8px; font-weight:900; font-size:0.6rem; cursor:pointer;">REMOVER DO HISTÓRICO</button>` :
-                            `
-                            <button class="btn-lembrete" onclick="marcarComoAvisado('${doc.id}', 'lembrete'); window.open('https://wa.me/55${fone}?text=${window.encodeURIComponent(msgLembrete)}')" style="${estiloLembrete} border:none; padding:8px; border-radius:8px; font-weight:900; font-size:0.6rem; cursor:pointer;">${textoLembrete}</button>
-                            <button class="btn-conf" onclick="marcarComoAvisado('${doc.id}', 'conf'); window.open('https://wa.me/55${fone}?text=${window.encodeURIComponent(msgConfirmacao)}')" style="${estiloConf} border:none; padding:8px; border-radius:8px; font-weight:900; font-size:0.6rem; cursor:pointer;">${textoConf}</button>
-                            <button onclick="marcarComoConcluidoManual('${doc.id}')" style="background:var(--grad); color:#000; border:none; padding:8px; border-radius:8px; font-weight:900; font-size:0.6rem; cursor:pointer;">CONCLUIR</button>
-                            `
-                        }
-                    </div>
-                </div>`;
-            });
-        },
-        err => {
-            console.error("Erro ao carregar agenda:", err);
-            render.innerHTML = `<div style="text-align: center; padding: 40px 20px; color: var(--danger);"><span style="font-size: 3rem; display: block; margin-bottom: 10px;">⚠️</span><b style="font-size: 0.9rem; text-transform: uppercase;">Erro ao carregar dados</b><br><span style="font-size: 0.7rem; color: var(--text-dim);">Verifique o console para detalhes</span></div>`;
-            
-            // Se for erro de índice, mostra instrução específica
-            if (err.message && err.message.includes("index")) {
-                alert("⚠️ ERRO DE ÍNDICE FIREBASE:\n\nVocê precisa criar um índice composto no Firebase Console:\n\n1. Acesse: https://console.firebase.google.com\n2. Vá em Firestore Database > Indexes\n3. Clique em 'Composite Indexes' > 'Add Index'\n4. Collection: agenda\n5. Campos:\n   - barbeiroId (Ascending) - se filtrar por barbeiro\n   - data (Ascending)\n   - hora (Ascending)\n\nOu use o link que aparecerá no console do navegador (F12)");
-            }
-        }
-    );
-}
-
-// FUNÇÃO ALTERNATIVA: Usa get() em vez de onSnapshot se o índice falhar
-async function carregarAgendaFallback() {
-    const bId = document.getElementById('filtro-barbeiro-agenda').value;
-    const dataFiltro = document.getElementById('filtro-data-selecionada').value;
-    const render = document.getElementById('render-agenda');
-
-    try {
-        const barbSnap = await db.collection("barbeiros").get();
-        const barbeirosNomes = {};
-        barbSnap.forEach(doc => { barbeirosNomes[doc.id] = doc.data().nome; });
-
-        let q = db.collection("agenda");
-        if (bId) q = q.where("barbeiroId", "==", bId);
-        if (dataFiltro) q = q.where("data", "==", dataFiltro);
-        
-        // Sem orderBy para evitar erro de índice - ordena na memória
-        const snap = await q.get();
-        
-        // Ordena manualmente
-        const docs = snap.docs.sort((a, b) => {
-            const dataA = a.data().data + ' ' + a.data().hora;
-            const dataB = b.data().data + ' ' + b.data().hora;
-            return dataA.localeCompare(dataB);
-        });
-
+    q.onSnapshot(snap => {
         render.innerHTML = "";
-        if (docs.length === 0) {
+        if (snap.empty) {
             render.innerHTML = `<div style="text-align: center; padding: 40px 20px; color: var(--text-dim);"><span style="font-size: 3rem; display: block; margin-bottom: 10px;">📅</span><b style="color: var(--primary); font-size: 0.9rem; text-transform: uppercase;">Sem agendamentos</b></div>`;
             return;
         }
 
-        // ... (mesmo código de renderização da função anterior)
         const agora = new Date();
         const hojeISO = agora.toLocaleDateString('en-CA');
         let ultimaDataRenderizada = "";
 
-        docs.forEach(doc => {
+        snap.forEach(doc => {
             const ag = doc.data();
             const fone = ag.whatsapp ? ag.whatsapp.replace(/\D/g, '') : "";
             const nomeExibicao = ag.barbeiroNome || barbeirosNomes[ag.barbeiroId] || "Não definido";
             const dataBR = ag.data.split('-').reverse().join('/');
 
+            // --- LÓGICA DE STATUS CONCLUÍDO ---
             const estaConcluido = ag.concluido === true;
             const estiloCardConcluido = estaConcluido ? "opacity: 0.6; filter: grayscale(0.5); border-color: #333;" : "border-color: #1a1a1a;";
             const badgeStatus = estaConcluido ? `<span style="color: var(--success); font-size: 0.65rem; font-weight: 900; display: block; margin-top: 2px;">✅ SERVIÇO FEITO</span>` : "";
@@ -1446,7 +1304,7 @@ async function carregarAgendaFallback() {
                 ultimaDataRenderizada = ag.data;
             }
 
-            // ... (restante do código de renderização igual ao original)
+            // --- LÓGICA DO LEMBRETE E CONFIRMAÇÃO ---
             const jaConfirmou = localStorage.getItem(`avisado_conf_${doc.id}`);
             const jaLembrou = localStorage.getItem(`avisado_lembrete_${doc.id}`);
             const [h, m] = ag.hora.split(':');
@@ -1494,11 +1352,7 @@ async function carregarAgendaFallback() {
                 </div>
             </div>`;
         });
-
-    } catch (err) {
-        console.error("Erro no fallback:", err);
-        render.innerHTML = `<div style="text-align: center; padding: 40px 20px; color: var(--danger);"><b>Erro ao carregar agenda</b><br><span style="font-size: 0.7rem;">${err.message}</span></div>`;
-    }
+    });
 }
 
 async function marcarComoConcluidoManual(id) {
